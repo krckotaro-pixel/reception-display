@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="format-detection" content="telephone=no">
+  <title>受付案内</title>
+  <style>
+    /* 見た目はここから自由に編集できます。 */
+    :root {
+      /* 例: "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif; */
+      font-family: "Hiragino Kaku Gothic ProN", "Hiragino Sans", sans-serif;
+    }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      box-sizing: border-box;
+      padding: 24px;
+      color: #fff;
+      /* 横幅いっぱいに背景全体を表示（縦長画面では下側に背景色が続きます）。 */
+      background: #000000 url("bg.svg") center top / 100% auto no-repeat fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+    }
+    /* 現在時刻だけは案内文と分けて、右上に固定表示します。 */
+    #nowtime {
+      position: fixed;
+      top: 24px;
+      right: 24px;
+      font-size: 3rem;
+    }
+    main { text-align: center; }
+    #mainstatus { margin: 1rem 0; font-size: 10rem; }
+    #substatus1, #substatus2 { margin: .5rem 0; font-size: 5rem; }
+    #timestatus { margin: 1rem 0; font-size: 7rem; }
+  </style>
+</head>
+<body>
+  <!-- ID は JavaScript から自動更新されます。HTML の配置・装飾は自由に変更できます。 -->
+  <div id="nowtime"></div>
+  <main>
+    <div id="mainstatus"></div>
+    <div id="substatus1"></div>
+    <div id="substatus2"></div>
+    <div id="timestatus"></div>
+  </main>
+
+  <script>
+    /* 公演時刻の設定。必要ならこの配列だけを編集してください。 */
+    const performances = [
+      [9, 30, 9, 50],
+      [10, 30, 10, 50],
+      [11, 30, 11, 50],
+      [12, 30, 12, 50],
+      [13, 30, 13, 50],
+      [14, 30, 14, 50],
+      [15, 30, 15, 50]
+    ];
+    const receptionOpenMinutes = 10;
+
+    const $ = (id) => document.getElementById(id);
+    const formatTime = (date) => date.toLocaleTimeString('ja-JP', {
+      hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+    });
+    const formatPerformance = (performance) => {
+      const [startHour, startMinute, endHour, endMinute] = performance;
+      return `${startHour}:${String(startMinute).padStart(2, '0')}～${endHour}:${String(endMinute).padStart(2, '0')}`;
+    };
+    const getTodayTime = (now, hour, minute) => {
+      const time = new Date(now);
+      time.setHours(hour, minute, 0, 0);
+      return time;
+    };
+
+    function updateDisplay() {
+      const now = new Date();
+      $('nowtime').textContent = formatTime(now);
+
+      const schedule = performances.map((performance) => {
+        const [startHour, startMinute, endHour, endMinute] = performance;
+        const start = getTodayTime(now, startHour, startMinute);
+        const end = getTodayTime(now, endHour, endMinute);
+        const receptionStart = new Date(start.getTime() - receptionOpenMinutes * 60 * 1000);
+        return { performance, start, end, receptionStart };
+      });
+      const finalEnd = schedule.at(-1).end;
+      const accepting = schedule.find((item) => now >= item.receptionStart && now < item.start);
+
+      if (now >= finalEnd) {
+        $('mainstatus').textContent = '案内終了';
+        $('substatus1').textContent = '本日の受付は終了しました';
+        $('substatus2').textContent = '';
+        $('timestatus').textContent = '';
+      } else if (accepting) {
+        $('mainstatus').textContent = '受付中';
+        $('substatus1').textContent = '現在、受付可能です';
+        $('substatus2').textContent = '受付に人数をお伝えください';
+        $('timestatus').textContent = `対象公演：${formatPerformance(accepting.performance)}`;
+      } else {
+        const next = schedule.find((item) => now < item.start);
+        $('mainstatus').textContent = '受付停止中';
+        $('substatus1').textContent = '現在、受付できません';
+        $('substatus2').textContent = '各公演10分前より受付が可能です';
+        $('timestatus').textContent = next
+          ? `次回：${formatPerformance(next.performance)}`
+          : '';
+      }
+    }
+
+    updateDisplay();
+    setInterval(updateDisplay, 1000);
+  </script>
+</body>
+</html>
